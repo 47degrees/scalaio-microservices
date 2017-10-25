@@ -1,15 +1,16 @@
-package scalaio.sample
+package microservices.sample.kafka
 
-import akka.actor.{ActorRef, ActorSystem, Props}
+import akka.actor.{ActorRef, ActorSystem}
 import akka.cluster.sharding.{ClusterSharding, ClusterShardingSettings, ShardRegion}
 
-import scalaio.sample.Models.EntityEnvelope
+import InternalModels.EntityEnvelope
+import microservices.sample.kafka.config.ScalaIOConfig
 
 object AttendeeShardingRegion {
 
-  def apply(output: ActorRef)(implicit system: ActorSystem): ActorRef = {
+  def apply(behaviour: AttendeeBizLogic, output: ActorRef, config: ScalaIOConfig)(implicit system: ActorSystem): ActorRef = {
 
-    val numberOfShards = 3
+    val numberOfShards = config.cluster.nodes.length
 
     val extractEntityId: ShardRegion.ExtractEntityId = {
       case EntityEnvelope(id, payload) ⇒ (id, payload)
@@ -20,8 +21,8 @@ object AttendeeShardingRegion {
     }
 
     ClusterSharding(system).start(
-      typeName = "Attendees",
-      entityProps = AttendeeEntityActor.props(output),
+      typeName = "AttendeesShardingRegion",
+      entityProps = AttendeeEntityActor.props(behaviour, output, config),
       settings = ClusterShardingSettings(system),
       extractEntityId = extractEntityId,
       extractShardId = extractShardId)
